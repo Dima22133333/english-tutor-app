@@ -48,7 +48,6 @@
   const toISODate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const todayISO = () => toISODate(new Date());
 
-  const STATUS_LABEL = { done: 'Проведено', cancelled: 'Скасовано', rescheduled: 'Перенесено' };
   const DURATIONS = [30, 40, 45, 50, 55, 60, 80, 90];
   const WEEKDAYS = [
     { v: 1, l: 'Пн' }, { v: 2, l: 'Вт' }, { v: 3, l: 'Ср' }, { v: 4, l: 'Чт' },
@@ -108,6 +107,8 @@
   let currentLessons = [];
   let currentPayments = [];
   let scheduleDate = new Date();
+  let searchQuery = '';
+  let debtorsOnly = false;
 
   /* ---------------- Toast ---------------- */
   let toastT;
@@ -214,9 +215,10 @@
   }
 
   function renderStudentList(lessons) {
+    if (lessons) window.__lastLessons = lessons;
+    lessons = lessons || window.__lastLessons;
     const grid = $('#studentsGrid');
     grid.innerHTML = '';
-    $('#emptyState').hidden = currentStudents.length > 0;
 
     const totalOwed = currentStudents.reduce((s, st) => s + Math.max(st.owed, 0), 0);
     const totalPaid = currentStudents.reduce((s, st) => s + st.paid, 0);
@@ -234,10 +236,20 @@
       <span class="chip highlight">Заробіток за місяць: <b>${fmtMoney(monthEarnings)}</b></span>
     `;
 
-    currentStudents.forEach(s => {
+    const q = searchQuery.trim().toLowerCase();
+    const visible = currentStudents.filter(s => {
+      if (debtorsOnly && !(s.owed > 0)) return false;
+      if (q && !s.name.toLowerCase().includes(q)) return false;
+      return true;
+    });
+
+    $('#emptyState').hidden = currentStudents.length > 0;
+    $('#noResultsState').hidden = !(currentStudents.length > 0 && visible.length === 0);
+
+    visible.forEach(s => {
       const card = el('div', 'student-card');
       const balCls = s.owed > 0 ? 'due' : 'ok';
-      const balText = s.owed > 0 ? `Винні ${fmtMoney(s.owed)}` : (s.owed < 0 ? `Переплата ${fmtMoney(-s.owed)}` : 'Оплачено');
+      const balText = s.owed > 0 ? `Борг ${fmtMoney(s.owed)}` : (s.owed < 0 ? `Переплата ${fmtMoney(-s.owed)}` : 'Оплачено');
       const subLabel = s.is_group ? memberNamesFor(s.id) || 'Без учасників' : (s.phone || 'без телефону');
       card.innerHTML = `
         <div class="student-card__name">${escapeHtml(s.name)}${s.is_group ? '<span class="group-badge">Група</span>' : ''}</div>
@@ -248,6 +260,16 @@
       grid.appendChild(card);
     });
   }
+
+  $('#studentSearch').addEventListener('input', (e) => {
+    searchQuery = e.target.value;
+    renderStudentList();
+  });
+  $('#debtorsFilterBtn').addEventListener('click', () => {
+    debtorsOnly = !debtorsOnly;
+    $('#debtorsFilterBtn').classList.toggle('is-active', debtorsOnly);
+    renderStudentList();
+  });
 
   function memberNamesFor(groupId) {
     const ids = currentGroupMembers.filter(m => m.group_id === groupId).map(m => m.student_id);
@@ -361,6 +383,56 @@
     toast('Видалено');
     goToList();
     await loadStudents();
+  });
+
+  $('#reportBtn').addEventListener('click', () => {
+    const s = currentStudents.find(x => x.id === currentStudentId);
+    if (!s) return;
+    const monthPrefix = todayISO().slice(0, 7);
+    const monthLabel = new Date().toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' });
+
+    const monthLessons = currentLessons.filter(l => l.lesson_date.startsWith(monthPrefix) && l.status === 'done');
+    const monthPayments = currentPayments.filter(p => p.payment_date.startsWith(monthPrefix));
+    const sumLessons = monthLessons.length * Number(s.price_per_lesson);
+    const sumPaid = monthPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+
+    const doneCountTotal = currentLessons.filter(l => l.status === 'done').length;
+    const paidTotal = currentPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+    const owedTotal = doneCountTotal * Number(s.price_per_lesson) - paidTotal;
+
+    const lessonsListText = monthLessons.length
+      ? monthLessons.slice().sort((a, b) => a.lesson_date.localeCompare(b.lesson_date))
+          .map(l => `— ${fmtDate(l.lesson_date)}${l.lesson_time ? ' о ' + l.lesson_time.slice(0, 5) : ''}${l.duration_minutes ? ` (${l.duration_minutes} хв)` : ''}`).join('\n')
+      : 'уроків не було';
+
+    const balanceLine = owedTotal > 0 ? `Борг: ${fmtMoney(owedTotal)}` : (owedTotal < 0 ? `Переплата: ${fmtMoney(-owedTotal)}` : 'Оплачено повністю');
+
+    const report = `Звіт за ${monthLabel}\n${s.is_group ? 'Група' : 'Учень'}: ${s.name}\n\nПроведені уроки:\n${lessonsListText}\n\nУсього уроків за місяць: ${monthLessons.length}\nСума за уроки: ${fmtMoney(sumLessons)}\nОплачено за місяць: ${fmtMoney(sumPaid)}\n\nЗагальний баланс: ${balanceLine}`;
+
+    openModal('Звіт за місяць', `
+      <textarea class="report-text" id="reportTextArea" readonly>${escapeHtml(report)}</textarea>
+      <div class="report-actions">
+        <button type="button" class="btn btn-ghost" id="reportCopyBtn">Копіювати</button>
+        <button type="button" class="btn btn-primary" id="reportShareBtn">Поділитися</button>
+      </div>
+    `, () => {});
+
+    $('#reportCopyBtn').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(report);
+        toast('Скопійовано');
+      } catch {
+        $('#reportTextArea').select();
+        document.execCommand('copy');
+        toast('Скопійовано');
+      }
+    });
+    const shareBtn = $('#reportShareBtn');
+    if (navigator.share) {
+      shareBtn.addEventListener('click', () => navigator.share({ text: report }).catch(() => {}));
+    } else {
+      shareBtn.hidden = true;
+    }
   });
 
   /* ---------------- Student/group detail ---------------- */
@@ -564,6 +636,36 @@
   $('#schedNext').addEventListener('click', () => { scheduleDate.setDate(scheduleDate.getDate() + 1); renderSchedule(); });
   $('#schedToday').addEventListener('click', () => { scheduleDate = new Date(); renderSchedule(); });
 
+  $('#scheduleList').addEventListener('change', async (e) => {
+    const select = e.target;
+    if (!select.classList.contains('status-select')) return;
+    const status = select.value;
+
+    const lessonId = select.getAttribute('data-lesson');
+    if (lessonId) {
+      const { error } = await sb.from('lessons').update({ status }).eq('id', lessonId);
+      if (error) return toast('Не вдалося змінити статус', true);
+      toast('Статус оновлено');
+      await loadStudents();
+      renderSchedule();
+      return;
+    }
+
+    const studentId = select.getAttribute('data-new-student');
+    if (studentId) {
+      const lesson_time = select.getAttribute('data-new-time') || null;
+      const duration_minutes = Number(select.getAttribute('data-new-duration')) || null;
+      const { error } = await sb.from('lessons').insert({
+        student_id: studentId, lesson_date: toISODate(scheduleDate), lesson_time, duration_minutes, status,
+        user_id: (await sb.auth.getUser()).data.user.id
+      });
+      if (error) return toast('Не вдалося додати урок', true);
+      toast('Урок додано');
+      await loadStudents();
+      renderSchedule();
+    }
+  });
+
   function renderSchedule() {
     const iso = toISODate(scheduleDate);
     const isToday = iso === todayISO();
@@ -576,7 +678,7 @@
     const templateSlots = (window.__allSlots || []).filter(sl => sl.weekday === weekday && !actualStudentIds.has(sl.student_id));
 
     const entries = [
-      ...actualLessons.map(l => ({ type: 'actual', time: l.lesson_time, duration: l.duration_minutes, studentId: l.student_id, status: l.status })),
+      ...actualLessons.map(l => ({ type: 'actual', id: l.id, time: l.lesson_time, duration: l.duration_minutes, studentId: l.student_id, status: l.status })),
       ...templateSlots.map(sl => ({ type: 'template', time: sl.slot_time, duration: sl.duration_minutes, studentId: sl.student_id }))
     ];
     entries.sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
@@ -591,16 +693,23 @@
       const row = el('li', 'list-row' + (entry.type === 'template' ? ' is-template' : ''));
       const timeLabel = entry.time ? entry.time.slice(0, 5) : '';
       const durationLabel = entry.duration ? ` (${entry.duration} хв)` : '';
-      const rightHtml = entry.type === 'actual'
-        ? `<span class="status-badge ${entry.status}">${STATUS_LABEL[entry.status]}</span>`
-        : `<span class="tag-template">За розкладом</span>`;
+      const selectAttrs = entry.type === 'actual'
+        ? `data-lesson="${entry.id}"`
+        : `data-new-student="${entry.studentId}" data-new-time="${entry.time || ''}" data-new-duration="${entry.duration || 60}"`;
+      const rightHtml = `
+        <select class="status-select ${entry.type === 'actual' ? entry.status : ''}" ${selectAttrs}>
+          ${entry.type === 'template' ? '<option value="" disabled selected>За розкладом</option>' : ''}
+          <option value="done" ${entry.status === 'done' ? 'selected' : ''}>Проведено</option>
+          <option value="rescheduled" ${entry.status === 'rescheduled' ? 'selected' : ''}>Перенесено</option>
+          <option value="cancelled" ${entry.status === 'cancelled' ? 'selected' : ''}>Скасовано</option>
+        </select>`;
       row.innerHTML = `
         <div class="list-row__main">
           <span class="list-row__name">${escapeHtml(s.name)}${s.is_group ? ' <span class="group-badge">Група</span>' : ''}</span>
           ${timeLabel ? `<span class="list-row__time">${timeLabel}${durationLabel}</span>` : ''}
         </div>
         <div class="list-row__right">${rightHtml}</div>`;
-      row.addEventListener('click', () => openStudent(s.id));
+      row.querySelector('.list-row__main').addEventListener('click', () => openStudent(s.id));
       list.appendChild(row);
     });
 

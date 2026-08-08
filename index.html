@@ -60,7 +60,13 @@
 
     <div class="totals-row" id="totalsRow"></div>
 
+    <div class="filter-row">
+      <input type="text" id="studentSearch" class="search-input" placeholder="Пошук за ім'ям...">
+      <button class="btn btn-ghost btn-sm" id="debtorsFilterBtn" type="button">Показати лише боржників</button>
+    </div>
+
     <div class="students-grid" id="studentsGrid"></div>
+    <p class="empty-state" id="noResultsState" hidden>Нікого не знайдено</p>
     <p class="empty-state" id="emptyState" hidden>Поки немає жодного учня. Додай першого кнопкою вище.</p>
   </main>
 
@@ -103,6 +109,7 @@
         <div class="member-chips" id="memberChips" hidden></div>
       </div>
       <div class="student-head__actions">
+        <button class="btn btn-ghost btn-sm" id="reportBtn">Звіт за місяць</button>
         <button class="btn btn-ghost btn-sm" id="editStudentBtn">Змінити</button>
         <button class="btn btn-ghost btn-sm btn-danger" id="deleteStudentBtn">Видалити</button>
       </div>
