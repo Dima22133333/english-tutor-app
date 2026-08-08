@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uk">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Мои ученики — учёт уроков и оплат</title>
+<title>Мої учні — облік уроків і оплат</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -11,12 +11,12 @@
 </head>
 <body>
 
-<!-- ====== ЭКРАН ВХОДА ====== -->
+<!-- ====== ЕКРАН ВХОДУ ====== -->
 <div class="auth-screen" id="authScreen">
   <div class="auth-card">
     <div class="auth-logo">📚</div>
-    <h1>Мои ученики</h1>
-    <p class="auth-sub">Учёт уроков и оплат</p>
+    <h1>Мої учні</h1>
+    <p class="auth-sub">Облік уроків і оплат</p>
 
     <form id="loginForm" class="auth-form">
       <div class="field">
@@ -28,57 +28,81 @@
         <input type="password" id="authPassword" required autocomplete="current-password" placeholder="••••••••" minlength="6">
       </div>
       <p class="auth-error" id="authError"></p>
-      <button type="submit" class="btn btn-primary btn-block" id="loginBtn">Войти</button>
-      <button type="button" class="btn btn-ghost btn-block" id="signupBtn">Создать аккаунт (первый раз)</button>
+      <button type="submit" class="btn btn-primary btn-block" id="loginBtn">Увійти</button>
+      <button type="button" class="btn btn-ghost btn-block" id="signupBtn">Створити акаунт (перший раз)</button>
     </form>
 
-    <p class="auth-hint">Данные видит только тот, кто вошёл под своим email — надёжно защищено.</p>
+    <p class="auth-hint">Дані бачить лише той, хто увійшов під своїм email — надійно захищено.</p>
   </div>
 </div>
 
-<!-- ====== ОСНОВНОЕ ПРИЛОЖЕНИЕ ====== -->
+<!-- ====== ОСНОВНИЙ ДОДАТОК ====== -->
 <div class="app" id="app" hidden>
 
   <header class="app-header">
-    <div class="app-header__brand">📚 <span>Мои ученики</span></div>
-    <button class="btn btn-ghost btn-sm" id="logoutBtn">Выйти</button>
+    <div class="app-header__brand">📚 <span>Мої учні</span></div>
+    <nav class="app-nav">
+      <button class="app-nav__tab is-active" id="navStudents" type="button">Учні</button>
+      <button class="app-nav__tab" id="navSchedule" type="button">Розклад</button>
+    </nav>
+    <button class="btn btn-ghost btn-sm" id="logoutBtn">Вийти</button>
   </header>
 
-  <!-- ---- Список учеников ---- -->
+  <!-- ---- Список учнів ---- -->
   <main class="view" id="listView">
     <div class="view-head">
-      <h2>Ученики</h2>
-      <button class="btn btn-primary btn-sm" id="addStudentBtn">+ Добавить ученика</button>
+      <h2>Учні та групи</h2>
+      <div class="view-head__actions">
+        <button class="btn btn-primary btn-sm" id="addStudentBtn">+ Учень</button>
+        <button class="btn btn-primary btn-sm" id="addGroupBtn">+ Група</button>
+      </div>
     </div>
 
     <div class="totals-row" id="totalsRow"></div>
 
     <div class="students-grid" id="studentsGrid"></div>
-    <p class="empty-state" id="emptyState" hidden>Пока нет ни одного ученика. Добавь первого кнопкой выше.</p>
+    <p class="empty-state" id="emptyState" hidden>Поки немає жодного учня. Додай першого кнопкою вище.</p>
   </main>
 
-  <!-- ---- Карточка ученика ---- -->
+  <!-- ---- Розклад ---- -->
+  <main class="view" id="scheduleView" hidden>
+    <div class="schedule-nav">
+      <button class="cal-nav" id="schedPrev" type="button">←</button>
+      <div class="schedule-nav__date">
+        <span id="schedDateLabel">Сьогодні</span>
+        <span class="muted" id="schedDateSub"></span>
+      </div>
+      <button class="cal-nav" id="schedNext" type="button">→</button>
+      <button class="btn btn-ghost btn-sm" id="schedToday" type="button">Сьогодні</button>
+    </div>
+
+    <ul class="list schedule-list" id="scheduleList"></ul>
+    <p class="empty-state-sm" id="scheduleEmpty" hidden>На цей день уроків не заплановано</p>
+  </main>
+
+  <!-- ---- Картка учня / групи ---- -->
   <main class="view" id="studentView" hidden>
-    <button class="back-btn" id="backBtn">← Все ученики</button>
+    <button class="back-btn" id="backBtn">← Усі учні</button>
 
     <div class="student-head">
       <div>
         <h2 id="studentName">—</h2>
         <span id="studentPhone" class="muted"></span>
+        <div class="member-chips" id="memberChips" hidden></div>
       </div>
       <div class="student-head__actions">
-        <button class="btn btn-ghost btn-sm" id="editStudentBtn">Изменить</button>
-        <button class="btn btn-ghost btn-sm btn-danger" id="deleteStudentBtn">Удалить</button>
+        <button class="btn btn-ghost btn-sm" id="editStudentBtn">Змінити</button>
+        <button class="btn btn-ghost btn-sm btn-danger" id="deleteStudentBtn">Видалити</button>
       </div>
     </div>
 
     <div class="balance-card" id="balanceCard">
       <div class="balance-item">
-        <span class="balance-item__label">Проведено уроков</span>
+        <span class="balance-item__label">Проведено уроків</span>
         <span class="balance-item__value" id="balLessons">0</span>
       </div>
       <div class="balance-item">
-        <span class="balance-item__label">Цена урока</span>
+        <span class="balance-item__label" id="balPriceLabel">Ціна уроку</span>
         <span class="balance-item__value" id="balPrice">0 ₴</span>
       </div>
       <div class="balance-item">
@@ -98,16 +122,16 @@
           <button class="btn btn-primary btn-sm" id="addLessonBtn">+ Урок</button>
         </div>
         <ul class="list" id="lessonsList"></ul>
-        <p class="empty-state-sm" id="lessonsEmpty" hidden>Уроков пока нет</p>
+        <p class="empty-state-sm" id="lessonsEmpty" hidden>Уроків поки немає</p>
       </section>
 
       <section class="col-card">
         <div class="col-card__head">
-          <h3>Оплаты</h3>
+          <h3>Оплати</h3>
           <button class="btn btn-primary btn-sm" id="addPaymentBtn">+ Оплата</button>
         </div>
         <ul class="list" id="paymentsList"></ul>
-        <p class="empty-state-sm" id="paymentsEmpty" hidden>Оплат пока нет</p>
+        <p class="empty-state-sm" id="paymentsEmpty" hidden>Оплат поки немає</p>
       </section>
     </div>
   </main>
