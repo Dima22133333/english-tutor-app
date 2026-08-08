@@ -113,7 +113,7 @@ ul{ list-style:none; margin:0; padding:0; }
 .member-chips span{ background:var(--group-soft); color:var(--group); font-size:12.5px; font-weight:700; padding:5px 12px; border-radius:100px; }
 
 .balance-card{
-  display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--border);
+  display:grid; grid-template-columns:repeat(5,1fr); gap:1px; background:var(--border);
   border-radius:var(--radius-md); overflow:hidden; margin-bottom:26px; box-shadow:var(--shadow);
 }
 .balance-item{ background:var(--surface); padding:18px; display:flex; flex-direction:column; gap:6px; }
@@ -121,6 +121,7 @@ ul{ list-style:none; margin:0; padding:0; }
 .balance-item__value{ font-size:20px; font-weight:800; }
 .balance-item--big .balance-item__value{ color:var(--primary); }
 .balance-item--big.is-due .balance-item__value{ color:var(--danger); }
+.balance-item--warn .balance-item__value{ color:var(--danger); font-size:14px; }
 
 .cols{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }
 .col-card{ background:var(--surface); border-radius:var(--radius-md); padding:20px; box-shadow:var(--shadow); }
@@ -138,6 +139,10 @@ ul{ list-style:none; margin:0; padding:0; }
 .status-badge.done{ background:var(--success-soft); color:var(--success); }
 .status-badge.rescheduled{ background:var(--primary-soft); color:var(--primary); }
 .status-badge.cancelled{ background:var(--border); color:var(--text-muted); text-decoration:line-through; }
+.status-select{ font-size:11.5px; font-weight:700; padding:5px 10px; border-radius:100px; border:1.5px solid transparent; cursor:pointer; appearance:none; -webkit-appearance:none; padding-right:22px; background-repeat:no-repeat; background-position:right 8px center; background-size:9px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236B7280' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); }
+.status-select.done{ background-color:var(--success-soft); color:var(--success); }
+.status-select.rescheduled{ background-color:var(--primary-soft); color:var(--primary); }
+.status-select.cancelled{ background-color:var(--border); color:var(--text-muted); }
 .amount-tag{ font-weight:800; color:var(--success); font-size:14.5px; }
 .row-del{ background:none; border:none; color:var(--text-muted); font-size:16px; padding:2px 6px; border-radius:6px; }
 .row-del:hover{ color:var(--danger); background:var(--danger-soft); }
@@ -153,6 +158,16 @@ ul{ list-style:none; margin:0; padding:0; }
 .schedule-list .list-row:hover{ box-shadow:var(--shadow-lg); }
 .schedule-list .list-row__name{ font-weight:800; font-size:15px; }
 .schedule-list .list-row__time{ color:var(--primary); font-weight:700; font-size:13px; }
+.schedule-list .list-row.is-template{ background:transparent; box-shadow:none; border:1.5px dashed var(--border); }
+.schedule-list .list-row.is-template .list-row__name{ color:var(--text-muted); font-weight:700; }
+.tag-template{ font-size:11px; font-weight:700; color:var(--text-muted); background:var(--bg); padding:4px 10px; border-radius:100px; }
+
+/* ---------- Schedule slot builder (in student/group form) ---------- */
+.slot-builder{ display:flex; flex-direction:column; gap:8px; }
+.slot-row{ display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:8px; align-items:center; }
+.slot-row select, .slot-row input{ padding:9px 10px; font-size:13.5px; border-radius:var(--radius-sm); border:1.5px solid var(--border); }
+.slot-row .row-del{ font-size:15px; }
+.slot-add{ align-self:flex-start; background:none; border:none; color:var(--primary); font-weight:700; font-size:13.5px; padding:4px 0; }
 
 /* ---------- Modal ---------- */
 .modal{ position:fixed; inset:0; z-index:200; display:flex; align-items:center; justify-content:center; opacity:0; visibility:hidden; transition:opacity .25s ease, visibility .25s ease; padding:20px; }

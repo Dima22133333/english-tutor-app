@@ -49,7 +49,52 @@
   const todayISO = () => toISODate(new Date());
 
   const STATUS_LABEL = { done: 'Проведено', cancelled: 'Скасовано', rescheduled: 'Перенесено' };
-  const STATUS_CYCLE = { done: 'cancelled', cancelled: 'rescheduled', rescheduled: 'done' };
+  const DURATIONS = [30, 40, 45, 50, 55, 60, 80, 90];
+  const WEEKDAYS = [
+    { v: 1, l: 'Пн' }, { v: 2, l: 'Вт' }, { v: 3, l: 'Ср' }, { v: 4, l: 'Чт' },
+    { v: 5, l: 'Пт' }, { v: 6, l: 'Сб' }, { v: 0, l: 'Нд' }
+  ];
+
+  function slotRowHtml(slot) {
+    const weekday = slot ? slot.weekday : '';
+    const time = slot ? (slot.slot_time || '').slice(0, 5) : '';
+    const duration = slot ? slot.duration_minutes : 60;
+    return `<div class="slot-row">
+      <select class="slot-day"><option value="">День</option>${WEEKDAYS.map(w => `<option value="${w.v}" ${String(weekday) === String(w.v) ? 'selected' : ''}>${w.l}</option>`).join('')}</select>
+      <input type="time" class="slot-time" value="${time}">
+      <select class="slot-duration">${DURATIONS.map(d => `<option value="${d}" ${duration === d ? 'selected' : ''}>${d} хв</option>`).join('')}</select>
+      <button type="button" class="row-del slot-remove">✕</button>
+    </div>`;
+  }
+
+  function wireSlotBuilder(form) {
+    const builder = form.querySelector('#slotBuilder');
+    form.querySelector('#slotAddBtn').addEventListener('click', () => {
+      builder.insertAdjacentHTML('beforeend', slotRowHtml(null));
+    });
+    builder.addEventListener('click', (e) => {
+      if (e.target.classList.contains('slot-remove')) e.target.closest('.slot-row').remove();
+    });
+  }
+
+  function collectSlots(form) {
+    return [...form.querySelectorAll('.slot-row')]
+      .map(r => ({
+        weekday: r.querySelector('.slot-day').value,
+        time: r.querySelector('.slot-time').value,
+        duration: Number(r.querySelector('.slot-duration').value)
+      }))
+      .filter(s => s.weekday !== '' && s.time);
+  }
+
+  async function saveSlots(entityId, userId, slots) {
+    await sb.from('schedule_slots').delete().eq('student_id', entityId);
+    if (slots.length) {
+      await sb.from('schedule_slots').insert(slots.map(s => ({
+        student_id: entityId, user_id: userId, weekday: Number(s.weekday), slot_time: s.time, duration_minutes: s.duration
+      })));
+    }
+  }
 
   function escapeHtml(str) {
     const d = document.createElement('div');
@@ -155,11 +200,12 @@
 
   /* ---------------- Students & groups: list ---------------- */
   async function loadStudents() {
-    const [studentsRes, lessonsRes, paymentsRes, membersRes] = await Promise.all([
+    const [studentsRes, lessonsRes, paymentsRes, membersRes, slotsRes] = await Promise.all([
       sb.from('students').select('*').order('created_at', { ascending: true }),
-      sb.from('lessons').select('id,student_id,status,lesson_date,lesson_time'),
+      sb.from('lessons').select('id,student_id,status,lesson_date,lesson_time,duration_minutes'),
       sb.from('payments').select('student_id,amount'),
-      sb.from('group_members').select('group_id,student_id')
+      sb.from('group_members').select('group_id,student_id'),
+      sb.from('schedule_slots').select('student_id,weekday,slot_time,duration_minutes')
     ]);
     if (studentsRes.error) { toast('Помилка завантаження учнів', true); return; }
 
@@ -168,6 +214,7 @@
     const payments = paymentsRes.data || [];
     currentGroupMembers = membersRes.data || [];
     window.__allLessons = lessons;
+    window.__allSlots = slotsRes.data || [];
 
     currentStudents = students.map(s => {
       const doneCount = lessons.filter(l => l.student_id === s.id && l.status === 'done').length;
@@ -228,31 +275,42 @@
     if (s.is_group) openGroupForm(s); else openStudentForm(s);
   });
 
-  function openStudentForm(student) {
+  async function openStudentForm(student) {
+    const existingSlots = student ? (window.__allSlots || []).filter(s => s.student_id === student.id) : [];
     openModal(student ? 'Змінити учня' : 'Новий учень', `
       <div class="field"><label>Ім'я</label><input type="text" id="fName" required value="${student ? escapeHtml(student.name) : ''}" placeholder="Наприклад, Оля Петренко"></div>
       <div class="field"><label>Телефон (необов'язково)</label><input type="tel" id="fPhone" value="${student ? escapeHtml(student.phone || '') : ''}" placeholder="+380 __ ___ __ __"></div>
       <div class="field"><label>Ціна одного уроку, ₴</label><input type="number" id="fPrice" required min="0" step="1" value="${student ? student.price_per_lesson : ''}" placeholder="300"></div>
+      <div class="field"><label>Графік занять (необов'язково)</label>
+        <div class="slot-builder" id="slotBuilder">${(existingSlots.length ? existingSlots : [null]).map(slotRowHtml).join('')}</div>
+        <button type="button" class="slot-add" id="slotAddBtn">+ Додати ще один час</button>
+      </div>
       <button type="submit" class="btn btn-primary btn-block">${student ? 'Зберегти' : 'Додати'}</button>
     `, async (form) => {
       const name = form.querySelector('#fName').value.trim();
       const phone = form.querySelector('#fPhone').value.trim();
       const price = Number(form.querySelector('#fPrice').value);
       if (!name || !(price >= 0)) return;
+      const slots = collectSlots(form);
+      const userId = (await sb.auth.getUser()).data.user.id;
+      let entityId = student?.id;
 
       if (student) {
         const { error } = await sb.from('students').update({ name, phone, price_per_lesson: price }).eq('id', student.id);
         if (error) return toast('Не вдалося зберегти', true);
         toast('Збережено');
       } else {
-        const { error } = await sb.from('students').insert({ name, phone, price_per_lesson: price, is_group: false, user_id: (await sb.auth.getUser()).data.user.id });
+        const { data, error } = await sb.from('students').insert({ name, phone, price_per_lesson: price, is_group: false, user_id: userId }).select().single();
         if (error) return toast('Не вдалося додати', true);
+        entityId = data.id;
         toast('Учня додано');
       }
+      await saveSlots(entityId, userId, slots);
       closeModal();
       await loadStudents();
       if (student) await openStudent(student.id);
     });
+    wireSlotBuilder($('#modalForm'));
   }
 
   function openGroupForm(group) {
@@ -261,16 +319,22 @@
     const checklistHtml = individuals.length
       ? individuals.map(s => `<label><input type="checkbox" value="${s.id}" ${memberIds.includes(s.id) ? 'checked' : ''}> ${escapeHtml(s.name)}</label>`).join('')
       : '<span class="empty">Спершу додай окремих учнів, щоб включити їх у групу</span>';
+    const existingSlots = group ? (window.__allSlots || []).filter(s => s.student_id === group.id) : [];
 
     openModal(group ? 'Змінити групу' : 'Нова група', `
       <div class="field"><label>Назва групи</label><input type="text" id="fName" required value="${group ? escapeHtml(group.name) : ''}" placeholder="Наприклад, Група А2 (вівторок)"></div>
       <div class="field"><label>Ціна групового заняття, ₴</label><input type="number" id="fPrice" required min="0" step="1" value="${group ? group.price_per_lesson : ''}" placeholder="600"></div>
       <div class="field"><label>Учасники групи</label><div class="member-checklist" id="fMembers">${checklistHtml}</div></div>
+      <div class="field"><label>Графік занять (необов'язково)</label>
+        <div class="slot-builder" id="slotBuilder">${(existingSlots.length ? existingSlots : [null]).map(slotRowHtml).join('')}</div>
+        <button type="button" class="slot-add" id="slotAddBtn">+ Додати ще один час</button>
+      </div>
       <button type="submit" class="btn btn-primary btn-block">${group ? 'Зберегти' : 'Створити групу'}</button>
     `, async (form) => {
       const name = form.querySelector('#fName').value.trim();
       const price = Number(form.querySelector('#fPrice').value);
       const memberIdsNew = [...form.querySelectorAll('#fMembers input:checked')].map(i => i.value);
+      const slots = collectSlots(form);
       if (!name || !(price >= 0)) return;
 
       const userId = (await sb.auth.getUser()).data.user.id;
@@ -290,12 +354,14 @@
         const rows = memberIdsNew.map(sid => ({ group_id: groupId, student_id: sid, user_id: userId }));
         await sb.from('group_members').insert(rows);
       }
+      await saveSlots(groupId, userId, slots);
 
       toast(group ? 'Групу оновлено' : 'Групу створено');
       closeModal();
       await loadStudents();
       if (group) await openStudent(group.id);
     });
+    wireSlotBuilder($('#modalForm'));
   }
 
   $('#deleteStudentBtn').addEventListener('click', async () => {
@@ -351,10 +417,15 @@
     const doneCount = currentLessons.filter(l => l.status === 'done').length;
     const paid = currentPayments.reduce((sum, p) => sum + Number(p.amount), 0);
     const owed = doneCount * Number(s.price_per_lesson) - paid;
+    const paidLessons = s.price_per_lesson > 0 ? Math.floor(paid / Number(s.price_per_lesson)) : 0;
+    const remaining = paidLessons - doneCount;
 
     $('#balLessons').textContent = doneCount;
     $('#balPrice').textContent = fmtMoney(s.price_per_lesson);
     $('#balPaid').textContent = fmtMoney(paid);
+    const balRemaining = $('#balRemaining');
+    balRemaining.textContent = remaining > 0 ? remaining : (remaining === 0 ? '0 (не оплачено)' : `${remaining} (не оплачено)`);
+    balRemaining.closest('.balance-item').classList.toggle('balance-item--warn', remaining <= 0);
     const balDue = $('#balDue');
     balDue.textContent = owed > 0 ? fmtMoney(owed) : (owed < 0 ? `+${fmtMoney(-owed)}` : '0 ₴');
     balDue.closest('.balance-item').classList.toggle('is-due', owed > 0);
@@ -364,12 +435,17 @@
     $('#lessonsEmpty').hidden = currentLessons.length > 0;
     currentLessons.forEach(l => {
       const row = el('li', 'list-row');
+      const durationLabel = l.duration_minutes ? ` · ${l.duration_minutes} хв` : '';
       row.innerHTML = `
         <div class="list-row__main">
-          <span class="list-row__date">${fmtDate(l.lesson_date)}${l.lesson_time ? ' · ' + l.lesson_time.slice(0, 5) : ''}</span>
+          <span class="list-row__date">${fmtDate(l.lesson_date)}${l.lesson_time ? ' · ' + l.lesson_time.slice(0, 5) : ''}${durationLabel}</span>
         </div>
         <div class="list-row__right">
-          <button class="status-badge ${l.status}" data-toggle="${l.id}">${STATUS_LABEL[l.status]}</button>
+          <select class="status-select ${l.status}" data-lesson="${l.id}">
+            <option value="done" ${l.status === 'done' ? 'selected' : ''}>Проведено</option>
+            <option value="rescheduled" ${l.status === 'rescheduled' ? 'selected' : ''}>Перенесено</option>
+            <option value="cancelled" ${l.status === 'cancelled' ? 'selected' : ''}>Скасовано</option>
+          </select>
           <button class="row-del" data-del-lesson="${l.id}" title="Видалити">✕</button>
         </div>`;
       lessonsList.appendChild(row);
@@ -401,26 +477,28 @@
     currentStudentId = null;
   }
 
+  $('#lessonsList').addEventListener('change', async (e) => {
+    const lessonId = e.target.getAttribute('data-lesson');
+    if (!lessonId) return;
+    const next = e.target.value;
+    const { error } = await sb.from('lessons').update({ status: next }).eq('id', lessonId);
+    if (error) return toast('Не вдалося змінити статус', true);
+    const lesson = currentLessons.find(l => l.id === lessonId);
+    if (lesson) lesson.status = next;
+    e.target.className = `status-select ${next}`;
+    renderStudentDetail(currentStudents.find(x => x.id === currentStudentId));
+    loadStudents();
+  });
+
   $('#lessonsList').addEventListener('click', async (e) => {
-    const toggleId = e.target.getAttribute('data-toggle');
     const delId = e.target.getAttribute('data-del-lesson');
-    if (toggleId) {
-      const lesson = currentLessons.find(l => l.id === toggleId);
-      const next = STATUS_CYCLE[lesson.status];
-      const { error } = await sb.from('lessons').update({ status: next }).eq('id', toggleId);
-      if (error) return toast('Не вдалося змінити статус', true);
-      lesson.status = next;
-      renderStudentDetail(currentStudents.find(x => x.id === currentStudentId));
-      loadStudents();
-    }
-    if (delId) {
-      if (!confirm('Видалити цей урок?')) return;
-      const { error } = await sb.from('lessons').delete().eq('id', delId);
-      if (error) return toast('Не вдалося видалити', true);
-      currentLessons = currentLessons.filter(l => l.id !== delId);
-      renderStudentDetail(currentStudents.find(x => x.id === currentStudentId));
-      loadStudents();
-    }
+    if (!delId) return;
+    if (!confirm('Видалити цей урок?')) return;
+    const { error } = await sb.from('lessons').delete().eq('id', delId);
+    if (error) return toast('Не вдалося видалити', true);
+    currentLessons = currentLessons.filter(l => l.id !== delId);
+    renderStudentDetail(currentStudents.find(x => x.id === currentStudentId));
+    loadStudents();
   });
 
   $('#paymentsList').addEventListener('click', async (e) => {
@@ -441,20 +519,26 @@
         <div class="field"><label>Дата</label><input type="date" id="fDate" required value="${todayISO()}"></div>
         <div class="field"><label>Час (необов'язково)</label><input type="time" id="fTime"></div>
       </div>
-      <div class="field"><label>Статус</label>
-        <select id="fStatus">
-          <option value="done">Проведено</option>
-          <option value="rescheduled">Перенесено</option>
-          <option value="cancelled">Скасовано</option>
-        </select>
+      <div class="field-row">
+        <div class="field"><label>Тривалість</label>
+          <select id="fDuration">${DURATIONS.map(d => `<option value="${d}" ${d === 60 ? 'selected' : ''}>${d} хв</option>`).join('')}</select>
+        </div>
+        <div class="field"><label>Статус</label>
+          <select id="fStatus">
+            <option value="done">Проведено</option>
+            <option value="rescheduled">Перенесено</option>
+            <option value="cancelled">Скасовано</option>
+          </select>
+        </div>
       </div>
       <button type="submit" class="btn btn-primary btn-block">Додати</button>
     `, async (form) => {
       const lesson_date = form.querySelector('#fDate').value;
       const lesson_time = form.querySelector('#fTime').value || null;
+      const duration_minutes = Number(form.querySelector('#fDuration').value);
       const status = form.querySelector('#fStatus').value;
       const { error } = await sb.from('lessons').insert({
-        student_id: currentStudentId, lesson_date, lesson_time, status,
+        student_id: currentStudentId, lesson_date, lesson_time, duration_minutes, status,
         user_id: (await sb.auth.getUser()).data.user.id
       });
       if (error) return toast('Не вдалося додати урок', true);
@@ -496,28 +580,39 @@
   function renderSchedule() {
     const iso = toISODate(scheduleDate);
     const isToday = iso === todayISO();
+    const weekday = scheduleDate.getDay();
     $('#schedDateLabel').textContent = isToday ? 'Сьогодні' : fmtDateLong(scheduleDate);
     $('#schedDateSub').textContent = isToday ? fmtDateLong(scheduleDate) : '';
 
-    const lessons = (window.__allLessons || []).filter(l => l.lesson_date === iso);
-    lessons.sort((a, b) => (a.lesson_time || '99:99').localeCompare(b.lesson_time || '99:99'));
+    const actualLessons = (window.__allLessons || []).filter(l => l.lesson_date === iso);
+    const actualStudentIds = new Set(actualLessons.map(l => l.student_id));
+    const templateSlots = (window.__allSlots || []).filter(sl => sl.weekday === weekday && !actualStudentIds.has(sl.student_id));
+
+    const entries = [
+      ...actualLessons.map(l => ({ type: 'actual', time: l.lesson_time, duration: l.duration_minutes, studentId: l.student_id, status: l.status })),
+      ...templateSlots.map(sl => ({ type: 'template', time: sl.slot_time, duration: sl.duration_minutes, studentId: sl.student_id }))
+    ];
+    entries.sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
 
     const list = $('#scheduleList');
     list.innerHTML = '';
-    $('#scheduleEmpty').hidden = lessons.length > 0;
+    $('#scheduleEmpty').hidden = entries.length > 0;
 
-    lessons.forEach(l => {
-      const s = currentStudents.find(x => x.id === l.student_id);
+    entries.forEach(entry => {
+      const s = currentStudents.find(x => x.id === entry.studentId);
       if (!s) return;
-      const row = el('li', 'list-row');
+      const row = el('li', 'list-row' + (entry.type === 'template' ? ' is-template' : ''));
+      const timeLabel = entry.time ? entry.time.slice(0, 5) : '';
+      const durationLabel = entry.duration ? ` (${entry.duration} хв)` : '';
+      const rightHtml = entry.type === 'actual'
+        ? `<span class="status-badge ${entry.status}">${STATUS_LABEL[entry.status]}</span>`
+        : `<span class="tag-template">За розкладом</span>`;
       row.innerHTML = `
         <div class="list-row__main">
           <span class="list-row__name">${escapeHtml(s.name)}${s.is_group ? ' <span class="group-badge">Група</span>' : ''}</span>
-          ${l.lesson_time ? `<span class="list-row__time">${l.lesson_time.slice(0, 5)}</span>` : ''}
+          ${timeLabel ? `<span class="list-row__time">${timeLabel}${durationLabel}</span>` : ''}
         </div>
-        <div class="list-row__right">
-          <span class="status-badge ${l.status}">${STATUS_LABEL[l.status]}</span>
-        </div>`;
+        <div class="list-row__right">${rightHtml}</div>`;
       row.addEventListener('click', () => openStudent(s.id));
       list.appendChild(row);
     });
