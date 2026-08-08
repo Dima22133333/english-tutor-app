@@ -174,6 +174,7 @@
   });
 
   $('#logoutBtn').addEventListener('click', async () => {
+    if (!confirm('Ви впевнені, що хочете вийти?')) return;
     await sb.auth.signOut();
     showAuth();
   });
