@@ -160,19 +160,6 @@
     showApp();
   });
 
-  $('#signupBtn').addEventListener('click', async () => {
-    const email = $('#authEmail').value.trim();
-    const password = $('#authPassword').value;
-    const errEl = $('#authError');
-    errEl.textContent = '';
-    if (!email || password.length < 6) { errEl.textContent = 'Введи email і пароль від 6 символів'; return; }
-    $('#signupBtn').textContent = 'Створюємо…';
-    const { error } = await sb.auth.signUp({ email, password });
-    $('#signupBtn').textContent = 'Створити акаунт (перший раз)';
-    if (error) { errEl.textContent = 'Не вдалося створити акаунт: ' + translateAuthError(error.message); return; }
-    toast('Акаунт створено! Тепер натисни «Увійти»');
-  });
-
   $('#logoutBtn').addEventListener('click', async () => {
     if (!confirm('Ви впевнені, що хочете вийти?')) return;
     await sb.auth.signOut();
@@ -182,7 +169,6 @@
   function translateAuthError(msg) {
     if (/invalid login credentials/i.test(msg)) return 'невірний email або пароль';
     if (/email not confirmed/i.test(msg)) return 'потрібно підтвердити email (див. лист), або вимкни підтвердження в налаштуваннях Supabase';
-    if (/already registered/i.test(msg)) return 'такий акаунт вже є, просто увійди';
     return msg;
   }
 
