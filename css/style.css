@@ -200,4 +200,21 @@ ul{ list-style:none; margin:0; padding:0; }
   .app-header{ padding:12px 14px; flex-wrap:wrap; }
   .app-nav{ order:3; width:100%; justify-content:center; }
   .view{ padding:20px 14px 50px; }
+  .schedule-nav{ flex-wrap:wrap; row-gap:10px; }
+  .schedule-nav__date{ order:1; width:100%; }
+  .schedule-nav #schedPrev{ order:2; }
+  .schedule-nav #schedNext{ order:3; }
+  .schedule-nav #schedToday{ order:4; }
+}
+
+@media (max-width:480px){
+  .modal{ padding:12px; }
+  .modal__card{ padding:26px 18px; }
+  #modalForm .field-row{ grid-template-columns:1fr; }
+  .slot-row{ grid-template-columns:1fr 1fr; grid-template-areas:"day time" "duration remove"; }
+  .slot-row .slot-day{ grid-area:day; }
+  .slot-row .slot-time{ grid-area:time; }
+  .slot-row .slot-duration{ grid-area:duration; }
+  .slot-row .slot-remove{ grid-area:remove; justify-self:end; align-self:center; }
+  .balance-card{ grid-template-columns:1fr; }
 }
