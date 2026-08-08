@@ -253,7 +253,7 @@
     visible.forEach(s => {
       const card = el('div', 'student-card');
       const ranOut = s.owed === 0 && s.paid > 0;
-      const balCls = (s.owed > 0 || ranOut) ? 'due' : 'ok';
+      const balCls = s.owed > 0 ? 'due' : (ranOut ? 'watch' : 'ok');
       const balText = s.owed > 0 ? `Борг ${fmtMoney(s.owed)}` : (s.owed < 0 ? `Переплата ${fmtMoney(-s.owed)}` : (ranOut ? 'Не оплачено' : 'Оплачено'));
       const subLabel = s.is_group ? memberNamesFor(s.id) || 'Без учасників' : (s.phone || 'без телефону');
       card.innerHTML = `
