@@ -82,6 +82,25 @@ ul{ list-style:none; margin:0; padding:0; }
 .app-nav__tab{ background:none; border:none; padding:8px 18px; border-radius:100px; font-weight:700; font-size:14px; color:var(--text-muted); }
 .app-nav__tab.is-active{ background:var(--primary); color:#fff; }
 .view{ max-width:1000px; margin:0 auto; padding:28px 20px 60px; }
+.view--wide{ max-width:1280px; }
+
+/* ---------- Weekly schedule grid (desktop only) ---------- */
+.schedule-layout{ display:block; }
+.schedule-week-col{ display:none; }
+.week-grid{ border-collapse:collapse; width:100%; font-size:13px; }
+.week-grid th, .week-grid td{ border:1px solid var(--border); padding:8px 10px; text-align:left; vertical-align:top; white-space:nowrap; }
+.week-grid th{ background:var(--bg); font-weight:800; color:var(--text-muted); font-size:12px; }
+.week-grid td:first-child, .week-grid th:first-child{ background:var(--bg); font-weight:700; color:var(--text); white-space:nowrap; }
+.week-grid__entry{ display:block; font-weight:700; color:var(--primary); }
+.week-grid__entry small{ font-weight:600; color:var(--text-muted); }
+.week-grid__entry + .week-grid__entry{ margin-top:4px; }
+.week-grid-scroll{ overflow-x:auto; border-radius:var(--radius-md); box-shadow:var(--shadow); }
+
+@media (min-width:1024px){
+  .schedule-layout{ display:grid; grid-template-columns:380px 1fr; gap:28px; align-items:start; }
+  .schedule-week-col{ display:block; background:var(--surface); border-radius:var(--radius-md); padding:20px; box-shadow:var(--shadow); }
+  .schedule-week-col h3{ font-size:16px; margin-bottom:14px; }
+}
 .view-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:12px; }
 .view-head__actions{ display:flex; gap:8px; }
 

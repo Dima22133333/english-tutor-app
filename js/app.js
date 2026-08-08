@@ -617,6 +617,34 @@
       row.addEventListener('click', () => openStudent(s.id));
       list.appendChild(row);
     });
+
+    renderWeekGrid();
+  }
+
+  function renderWeekGrid() {
+    const table = $('#weekGrid');
+    const slots = window.__allSlots || [];
+    $('#weekGridEmpty').hidden = slots.length > 0;
+    if (!slots.length) { table.innerHTML = ''; return; }
+
+    const times = [...new Set(slots.map(sl => sl.slot_time))].sort();
+
+    let html = '<thead><tr><th>Час</th>' + WEEKDAYS.map(w => `<th>${w.l}</th>`).join('') + '</tr></thead><tbody>';
+    times.forEach(time => {
+      html += `<tr><td>${time.slice(0, 5)}</td>`;
+      WEEKDAYS.forEach(w => {
+        const cellSlots = slots.filter(sl => sl.slot_time === time && sl.weekday === w.v);
+        const cellHtml = cellSlots.map(sl => {
+          const s = currentStudents.find(x => x.id === sl.student_id);
+          if (!s) return '';
+          return `<span class="week-grid__entry">${escapeHtml(s.name)} <small>(${sl.duration_minutes} хв)</small></span>`;
+        }).join('');
+        html += `<td>${cellHtml}</td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</tbody>';
+    table.innerHTML = html;
   }
 
   /* ---------------- Modal helper ---------------- */

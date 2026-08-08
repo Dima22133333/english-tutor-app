@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Мої учні — облік уроків і оплат</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
+<link rel="icon" type="image/png" href="favicon-512.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
@@ -65,19 +66,31 @@
   </main>
 
   <!-- ---- Розклад ---- -->
-  <main class="view" id="scheduleView" hidden>
-    <div class="schedule-nav">
-      <button class="cal-nav" id="schedPrev" type="button">←</button>
-      <div class="schedule-nav__date">
-        <span id="schedDateLabel">Сьогодні</span>
-        <span class="muted" id="schedDateSub"></span>
-      </div>
-      <button class="cal-nav" id="schedNext" type="button">→</button>
-      <button class="btn btn-ghost btn-sm" id="schedToday" type="button">Сьогодні</button>
-    </div>
+  <main class="view view--wide" id="scheduleView" hidden>
+    <div class="schedule-layout">
+      <div class="schedule-day-col">
+        <div class="schedule-nav">
+          <button class="cal-nav" id="schedPrev" type="button">←</button>
+          <div class="schedule-nav__date">
+            <span id="schedDateLabel">Сьогодні</span>
+            <span class="muted" id="schedDateSub"></span>
+          </div>
+          <button class="cal-nav" id="schedNext" type="button">→</button>
+          <button class="btn btn-ghost btn-sm" id="schedToday" type="button">Сьогодні</button>
+        </div>
 
-    <ul class="list schedule-list" id="scheduleList"></ul>
-    <p class="empty-state-sm" id="scheduleEmpty" hidden>На цей день уроків не заплановано</p>
+        <ul class="list schedule-list" id="scheduleList"></ul>
+        <p class="empty-state-sm" id="scheduleEmpty" hidden>На цей день уроків не заплановано</p>
+      </div>
+
+      <div class="schedule-week-col" id="scheduleWeekCol">
+        <h3>Тижневий графік</h3>
+        <div class="week-grid-scroll">
+          <table class="week-grid" id="weekGrid"></table>
+        </div>
+        <p class="empty-state-sm" id="weekGridEmpty" hidden>Графік занять поки не заданий</p>
+      </div>
+    </div>
   </main>
 
   <!-- ---- Картка учня / групи ---- -->
