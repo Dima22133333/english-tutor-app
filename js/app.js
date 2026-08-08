@@ -521,6 +521,7 @@
           </div>
           <div class="list-row__right">
             <select class="status-select ${l.status}" data-lesson="${l.id}">
+              <option value="planned" ${l.status === 'planned' ? 'selected' : ''}>Заплановано</option>
               <option value="done" ${l.status === 'done' ? 'selected' : ''}>Проведено</option>
               <option value="rescheduled" ${l.status === 'rescheduled' ? 'selected' : ''}>Перенесено</option>
               <option value="cancelled" ${l.status === 'cancelled' ? 'selected' : ''}>Скасовано</option>
@@ -628,6 +629,7 @@
         </div>
         <div class="field"><label>Статус</label>
           <select id="fStatus">
+            <option value="planned">Заплановано</option>
             <option value="done">Проведено</option>
             <option value="rescheduled">Перенесено</option>
             <option value="cancelled">Скасовано</option>
@@ -652,6 +654,11 @@
       await openStudent(currentStudentId);
       await loadStudents();
     });
+    const dateInput = $('#modalForm #fDate');
+    const statusSelect = $('#modalForm #fStatus');
+    const updateDefaultStatus = () => { statusSelect.value = dateInput.value > todayISO() ? 'planned' : 'done'; };
+    updateDefaultStatus();
+    dateInput.addEventListener('change', updateDefaultStatus);
   });
 
   $('#addPaymentBtn').addEventListener('click', () => {
@@ -745,6 +752,7 @@
       const rightHtml = `
         <select class="status-select ${entry.type === 'actual' ? entry.status : ''}" ${selectAttrs}>
           ${entry.type === 'template' ? '<option value="" disabled selected>За розкладом</option>' : ''}
+          <option value="planned" ${entry.status === 'planned' ? 'selected' : ''}>Заплановано</option>
           <option value="done" ${entry.status === 'done' ? 'selected' : ''}>Проведено</option>
           <option value="rescheduled" ${entry.status === 'rescheduled' ? 'selected' : ''}>Перенесено</option>
           <option value="cancelled" ${entry.status === 'cancelled' ? 'selected' : ''}>Скасовано</option>
