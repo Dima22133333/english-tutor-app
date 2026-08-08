@@ -252,8 +252,9 @@
 
     visible.forEach(s => {
       const card = el('div', 'student-card');
-      const balCls = s.owed > 0 ? 'due' : 'ok';
-      const balText = s.owed > 0 ? `Борг ${fmtMoney(s.owed)}` : (s.owed < 0 ? `Переплата ${fmtMoney(-s.owed)}` : 'Оплачено');
+      const ranOut = s.owed === 0 && s.paid > 0;
+      const balCls = (s.owed > 0 || ranOut) ? 'due' : 'ok';
+      const balText = s.owed > 0 ? `Борг ${fmtMoney(s.owed)}` : (s.owed < 0 ? `Переплата ${fmtMoney(-s.owed)}` : (ranOut ? 'Не оплачено' : 'Оплачено'));
       const subLabel = s.is_group ? memberNamesFor(s.id) || 'Без учасників' : (s.phone || 'без телефону');
       card.innerHTML = `
         <div class="student-card__name">${escapeHtml(s.name)}${s.is_group ? '<span class="group-badge">Група</span>' : ''}</div>
