@@ -194,7 +194,7 @@
   async function loadStudents() {
     const [studentsRes, lessonsRes, paymentsRes, membersRes, slotsRes] = await Promise.all([
       sb.from('students').select('*').order('created_at', { ascending: true }),
-      sb.from('lessons').select('id,student_id,status,lesson_date,lesson_time,duration_minutes'),
+      sb.from('lessons').select('id,student_id,status,lesson_date,lesson_time,duration_minutes,note'),
       sb.from('payments').select('student_id,amount'),
       sb.from('group_members').select('group_id,student_id'),
       sb.from('schedule_slots').select('student_id,weekday,slot_time,duration_minutes')
@@ -512,20 +512,24 @@
     lessonsList.innerHTML = '';
     $('#lessonsEmpty').hidden = currentLessons.length > 0;
     currentLessons.forEach(l => {
-      const row = el('li', 'list-row');
+      const row = el('li', 'list-row list-row--stacked');
       const durationLabel = l.duration_minutes ? ` · ${l.duration_minutes} хв` : '';
       row.innerHTML = `
-        <div class="list-row__main">
-          <span class="list-row__date">${fmtDate(l.lesson_date)}${l.lesson_time ? ' · ' + l.lesson_time.slice(0, 5) : ''}${durationLabel}</span>
+        <div class="list-row__top">
+          <div class="list-row__main">
+            <span class="list-row__date">${fmtDate(l.lesson_date)}${l.lesson_time ? ' · ' + l.lesson_time.slice(0, 5) : ''}${durationLabel}</span>
+          </div>
+          <div class="list-row__right">
+            <select class="status-select ${l.status}" data-lesson="${l.id}">
+              <option value="done" ${l.status === 'done' ? 'selected' : ''}>Проведено</option>
+              <option value="rescheduled" ${l.status === 'rescheduled' ? 'selected' : ''}>Перенесено</option>
+              <option value="cancelled" ${l.status === 'cancelled' ? 'selected' : ''}>Скасовано</option>
+            </select>
+            <button class="row-note" data-note-lesson="${l.id}" title="Нотатка">📝</button>
+            <button class="row-del" data-del-lesson="${l.id}" title="Видалити">✕</button>
+          </div>
         </div>
-        <div class="list-row__right">
-          <select class="status-select ${l.status}" data-lesson="${l.id}">
-            <option value="done" ${l.status === 'done' ? 'selected' : ''}>Проведено</option>
-            <option value="rescheduled" ${l.status === 'rescheduled' ? 'selected' : ''}>Перенесено</option>
-            <option value="cancelled" ${l.status === 'cancelled' ? 'selected' : ''}>Скасовано</option>
-          </select>
-          <button class="row-del" data-del-lesson="${l.id}" title="Видалити">✕</button>
-        </div>`;
+        ${l.note ? `<p class="list-row__note">${escapeHtml(l.note)}</p>` : ''}`;
       lessonsList.appendChild(row);
     });
 
@@ -570,13 +574,34 @@
 
   $('#lessonsList').addEventListener('click', async (e) => {
     const delId = e.target.getAttribute('data-del-lesson');
-    if (!delId) return;
-    if (!confirm('Видалити цей урок?')) return;
-    const { error } = await sb.from('lessons').delete().eq('id', delId);
-    if (error) return toast('Не вдалося видалити', true);
-    currentLessons = currentLessons.filter(l => l.id !== delId);
-    renderStudentDetail(currentStudents.find(x => x.id === currentStudentId));
-    loadStudents();
+    if (delId) {
+      if (!confirm('Видалити цей урок?')) return;
+      const { error } = await sb.from('lessons').delete().eq('id', delId);
+      if (error) return toast('Не вдалося видалити', true);
+      currentLessons = currentLessons.filter(l => l.id !== delId);
+      renderStudentDetail(currentStudents.find(x => x.id === currentStudentId));
+      loadStudents();
+      return;
+    }
+
+    const noteId = e.target.getAttribute('data-note-lesson');
+    if (noteId) {
+      const lesson = currentLessons.find(l => l.id === noteId);
+      openModal('Нотатка до уроку', `
+        <div class="field"><label>${fmtDate(lesson.lesson_date)}${lesson.lesson_time ? ' · ' + lesson.lesson_time.slice(0, 5) : ''}</label>
+          <textarea id="fNoteEdit" rows="4" placeholder="Наприклад: повторити Present Perfect">${escapeHtml(lesson.note || '')}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Зберегти</button>
+      `, async (form) => {
+        const note = form.querySelector('#fNoteEdit').value.trim();
+        const { error } = await sb.from('lessons').update({ note }).eq('id', noteId);
+        if (error) return toast('Не вдалося зберегти нотатку', true);
+        lesson.note = note;
+        closeModal();
+        toast('Нотатку збережено');
+        renderStudentDetail(currentStudents.find(x => x.id === currentStudentId));
+      });
+    }
   });
 
   $('#paymentsList').addEventListener('click', async (e) => {
@@ -609,14 +634,16 @@
           </select>
         </div>
       </div>
+      <div class="field"><label>Нотатка до цього уроку (необов'язково)</label><textarea id="fNote" rows="2" placeholder="Наприклад: повторити Present Perfect"></textarea></div>
       <button type="submit" class="btn btn-primary btn-block">Додати</button>
     `, async (form) => {
       const lesson_date = form.querySelector('#fDate').value;
       const lesson_time = form.querySelector('#fTime').value || null;
       const duration_minutes = Number(form.querySelector('#fDuration').value);
       const status = form.querySelector('#fStatus').value;
+      const note = form.querySelector('#fNote').value.trim();
       const { error } = await sb.from('lessons').insert({
-        student_id: currentStudentId, lesson_date, lesson_time, duration_minutes, status,
+        student_id: currentStudentId, lesson_date, lesson_time, duration_minutes, status, note,
         user_id: (await sb.auth.getUser()).data.user.id
       });
       if (error) return toast('Не вдалося додати урок', true);
@@ -697,7 +724,7 @@
     const templateSlots = (window.__allSlots || []).filter(sl => sl.weekday === weekday && !actualStudentIds.has(sl.student_id));
 
     const entries = [
-      ...actualLessons.map(l => ({ type: 'actual', id: l.id, time: l.lesson_time, duration: l.duration_minutes, studentId: l.student_id, status: l.status })),
+      ...actualLessons.map(l => ({ type: 'actual', id: l.id, time: l.lesson_time, duration: l.duration_minutes, studentId: l.student_id, status: l.status, note: l.note })),
       ...templateSlots.map(sl => ({ type: 'template', time: sl.slot_time, duration: sl.duration_minutes, studentId: sl.student_id }))
     ];
     entries.sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
@@ -726,6 +753,7 @@
         <div class="list-row__main">
           <span class="list-row__name">${escapeHtml(s.name)}${s.is_group ? ' <span class="group-badge">Група</span>' : ''}</span>
           ${timeLabel ? `<span class="list-row__time">${timeLabel}${durationLabel}</span>` : ''}
+          ${entry.note ? `<span class="list-row__sub">📝 ${escapeHtml(entry.note)}</span>` : ''}
         </div>
         <div class="list-row__right">${rightHtml}</div>`;
       row.querySelector('.list-row__main').addEventListener('click', () => openStudent(s.id));
