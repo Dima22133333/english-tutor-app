@@ -89,6 +89,8 @@ ul{ list-style:none; margin:0; padding:0; }
 }
 .totals-row .chip b{ color:var(--primary); }
 .totals-row .chip.warn b{ color:var(--danger); }
+.totals-row .chip.highlight{ background:var(--primary-soft); border-color:var(--primary-soft); color:var(--primary-dark); }
+.totals-row .chip.highlight b{ color:var(--primary-dark); }
 
 /* ---------- Student cards ---------- */
 .students-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(240px,1fr)); gap:16px; }

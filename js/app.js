@@ -242,9 +242,9 @@
 
     $('#totalsRow').innerHTML = `
       <span class="chip">Учнів/груп: <b>${currentStudents.length}</b></span>
-      <span class="chip">Зібрано: <b>${fmtMoney(totalPaid)}</b></span>
-      <span class="chip ${totalOwed > 0 ? 'warn' : ''}">Повинні: <b>${fmtMoney(totalOwed)}</b></span>
-      <span class="chip">Заробіток за місяць: <b>${fmtMoney(monthEarnings)}</b></span>
+      <span class="chip">Оплачено: <b>${fmtMoney(totalPaid)}</b></span>
+      <span class="chip ${totalOwed > 0 ? 'warn' : ''}">Заборгованість: <b>${fmtMoney(totalOwed)}</b></span>
+      <span class="chip highlight">Заробіток за місяць: <b>${fmtMoney(monthEarnings)}</b></span>
     `;
 
     currentStudents.forEach(s => {
