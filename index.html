@@ -44,6 +44,7 @@
     <nav class="app-nav">
       <button class="app-nav__tab is-active" id="navStudents" type="button">Учні</button>
       <button class="app-nav__tab" id="navSchedule" type="button">Розклад</button>
+      <button class="app-nav__tab" id="navStats" type="button">Статистика</button>
     </nav>
     <button class="btn btn-ghost btn-sm" id="logoutBtn">Вийти</button>
   </header>
@@ -95,6 +96,24 @@
         </div>
         <p class="empty-state-sm" id="weekGridEmpty" hidden>Графік занять поки не заданий</p>
       </div>
+    </div>
+  </main>
+
+  <!-- ---- Статистика ---- -->
+  <main class="view" id="statsView" hidden>
+    <div class="view-head">
+      <h2>Статистика</h2>
+    </div>
+
+    <div class="stats-block">
+      <h3>Заробіток за останні 6 місяців</h3>
+      <div class="bar-chart" id="earningsChart"></div>
+    </div>
+
+    <div class="stats-block">
+      <h3>Відсоток скасованих/перенесених уроків</h3>
+      <div class="hbar-chart" id="cancelChart"></div>
+      <p class="empty-state-sm" id="cancelChartEmpty" hidden>Ще немає даних</p>
     </div>
   </main>
 

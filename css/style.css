@@ -127,6 +127,21 @@ ul{ list-style:none; margin:0; padding:0; }
 .report-actions{ display:flex; gap:10px; margin-top:14px; }
 .report-actions .btn{ flex:1; }
 
+/* ---------- Stats / charts ---------- */
+.stats-block{ background:var(--surface); border-radius:var(--radius-md); padding:24px; box-shadow:var(--shadow); margin-bottom:24px; }
+.stats-block h3{ font-size:16px; margin-bottom:22px; }
+.bar-chart{ display:flex; align-items:flex-end; gap:12px; height:190px; }
+.bar-chart__col{ flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; height:100%; justify-content:flex-end; min-width:0; }
+.bar-chart__bar{ width:100%; max-width:52px; background:var(--primary); border-radius:6px 6px 0 0; min-height:3px; transition:height .4s ease; }
+.bar-chart__value{ font-size:11px; font-weight:800; color:var(--text); white-space:nowrap; }
+.bar-chart__label{ font-size:11.5px; color:var(--text-muted); font-weight:700; text-transform:capitalize; }
+.hbar-chart{ display:flex; flex-direction:column; gap:16px; }
+.hbar-row{ display:flex; align-items:center; gap:12px; }
+.hbar-row__name{ width:110px; font-size:13px; font-weight:700; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.hbar-row__track{ flex:1; height:14px; background:var(--bg); border-radius:100px; overflow:hidden; min-width:0; }
+.hbar-row__fill{ height:100%; background:var(--danger); border-radius:100px; transition:width .4s ease; }
+.hbar-row__pct{ width:40px; text-align:right; font-size:12px; font-weight:700; color:var(--text-muted); flex-shrink:0; }
+
 /* ---------- Student cards ---------- */
 .students-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(240px,1fr)); gap:16px; }
 .student-card{

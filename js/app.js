@@ -176,14 +176,18 @@
   /* ---------------- Nav tabs ---------------- */
   $('#navStudents').addEventListener('click', () => switchTab('students'));
   $('#navSchedule').addEventListener('click', () => switchTab('schedule'));
+  $('#navStats').addEventListener('click', () => switchTab('stats'));
 
   function switchTab(tab) {
     $('#navStudents').classList.toggle('is-active', tab === 'students');
     $('#navSchedule').classList.toggle('is-active', tab === 'schedule');
+    $('#navStats').classList.toggle('is-active', tab === 'stats');
     $('#listView').hidden = tab !== 'students';
     $('#scheduleView').hidden = tab !== 'schedule';
+    $('#statsView').hidden = tab !== 'stats';
     $('#studentView').hidden = true;
     if (tab === 'schedule') renderSchedule();
+    if (tab === 'stats') renderStats();
   }
 
   /* ---------------- Students & groups: list ---------------- */
@@ -441,6 +445,7 @@
     switchTabInternal();
     $('#listView').hidden = true;
     $('#scheduleView').hidden = true;
+    $('#statsView').hidden = true;
     $('#studentView').hidden = false;
 
     const s = currentStudents.find(x => x.id === id);
@@ -470,6 +475,7 @@
   function switchTabInternal() {
     $('#navStudents').classList.remove('is-active');
     $('#navSchedule').classList.remove('is-active');
+    $('#navStats').classList.remove('is-active');
   }
 
   function renderStudentDetail(s) {
@@ -740,6 +746,50 @@
     });
     html += '</tbody>';
     table.innerHTML = html;
+  }
+
+  function renderStats() {
+    const lessons = window.__allLessons || [];
+    const now = new Date();
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({
+        prefix: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+        label: d.toLocaleDateString('uk-UA', { month: 'short' })
+      });
+    }
+    const earnings = months.map(m => {
+      const sum = currentStudents.reduce((total, s) => {
+        const count = lessons.filter(l => l.student_id === s.id && l.status === 'done' && l.lesson_date.startsWith(m.prefix)).length;
+        return total + count * Number(s.price_per_lesson);
+      }, 0);
+      return { ...m, sum };
+    });
+    const maxEarn = Math.max(...earnings.map(e => e.sum), 1);
+    $('#earningsChart').innerHTML = earnings.map(e => `
+      <div class="bar-chart__col">
+        <span class="bar-chart__value">${e.sum ? fmtMoney(e.sum) : ''}</span>
+        <div class="bar-chart__bar" style="height:${Math.max((e.sum / maxEarn) * 100, 2)}%"></div>
+        <span class="bar-chart__label">${e.label}</span>
+      </div>
+    `).join('');
+
+    const cancelRows = currentStudents.map(s => {
+      const sLessons = lessons.filter(l => l.student_id === s.id);
+      const total = sLessons.length;
+      const bad = sLessons.filter(l => l.status === 'cancelled' || l.status === 'rescheduled').length;
+      return { name: s.name, pct: total ? Math.round((bad / total) * 100) : 0, total };
+    }).filter(r => r.total > 0).sort((a, b) => b.pct - a.pct);
+
+    $('#cancelChartEmpty').hidden = cancelRows.length > 0;
+    $('#cancelChart').innerHTML = cancelRows.map(r => `
+      <div class="hbar-row">
+        <span class="hbar-row__name">${escapeHtml(r.name)}</span>
+        <div class="hbar-row__track"><div class="hbar-row__fill" style="width:${r.pct}%"></div></div>
+        <span class="hbar-row__pct">${r.pct}%</span>
+      </div>
+    `).join('');
   }
 
   /* ---------------- Modal helper ---------------- */
