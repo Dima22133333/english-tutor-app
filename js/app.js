@@ -294,6 +294,7 @@
       <div class="field"><label>Ім'я</label><input type="text" id="fName" required value="${student ? escapeHtml(student.name) : ''}" placeholder="Наприклад, Оля Петренко"></div>
       <div class="field"><label>Телефон (необов'язково)</label><input type="tel" id="fPhone" value="${student ? escapeHtml(student.phone || '') : ''}" placeholder="+380 __ ___ __ __"></div>
       <div class="field"><label>Ціна одного уроку, ₴</label><input type="number" id="fPrice" required min="0" step="1" value="${student ? student.price_per_lesson : ''}" placeholder="300"></div>
+      <div class="field"><label>Посилання на урок (необов'язково)</label><input type="url" id="fMeetingLink" value="${student ? escapeHtml(student.meeting_link || '') : ''}" placeholder="https://meet.google.com/..."></div>
       <div class="field"><label>Графік занять (необов'язково)</label>
         <div class="slot-builder" id="slotBuilder">${(existingSlots.length ? existingSlots : [null]).map(slotRowHtml).join('')}</div>
         <button type="button" class="slot-add" id="slotAddBtn">+ Додати ще один час</button>
@@ -303,17 +304,18 @@
       const name = form.querySelector('#fName').value.trim();
       const phone = form.querySelector('#fPhone').value.trim();
       const price = Number(form.querySelector('#fPrice').value);
+      const meeting_link = form.querySelector('#fMeetingLink').value.trim();
       if (!name || !(price >= 0)) return;
       const slots = collectSlots(form);
       const userId = (await sb.auth.getUser()).data.user.id;
       let entityId = student?.id;
 
       if (student) {
-        const { error } = await sb.from('students').update({ name, phone, price_per_lesson: price }).eq('id', student.id);
+        const { error } = await sb.from('students').update({ name, phone, price_per_lesson: price, meeting_link }).eq('id', student.id);
         if (error) return toast('Не вдалося зберегти', true);
         toast('Збережено');
       } else {
-        const { data, error } = await sb.from('students').insert({ name, phone, price_per_lesson: price, is_group: false, user_id: userId }).select().single();
+        const { data, error } = await sb.from('students').insert({ name, phone, price_per_lesson: price, meeting_link, is_group: false, user_id: userId }).select().single();
         if (error) return toast('Не вдалося додати', true);
         entityId = data.id;
         toast('Учня додано');
@@ -337,6 +339,7 @@
     openModal(group ? 'Змінити групу' : 'Нова група', `
       <div class="field"><label>Назва групи</label><input type="text" id="fName" required value="${group ? escapeHtml(group.name) : ''}" placeholder="Наприклад, Група А2 (вівторок)"></div>
       <div class="field"><label>Ціна групового заняття, ₴</label><input type="number" id="fPrice" required min="0" step="1" value="${group ? group.price_per_lesson : ''}" placeholder="600"></div>
+      <div class="field"><label>Посилання на урок (необов'язково)</label><input type="url" id="fMeetingLink" value="${group ? escapeHtml(group.meeting_link || '') : ''}" placeholder="https://meet.google.com/..."></div>
       <div class="field"><label>Учасники групи</label><div class="member-checklist" id="fMembers">${checklistHtml}</div></div>
       <div class="field"><label>Графік занять (необов'язково)</label>
         <div class="slot-builder" id="slotBuilder">${(existingSlots.length ? existingSlots : [null]).map(slotRowHtml).join('')}</div>
@@ -346,6 +349,7 @@
     `, async (form) => {
       const name = form.querySelector('#fName').value.trim();
       const price = Number(form.querySelector('#fPrice').value);
+      const meeting_link = form.querySelector('#fMeetingLink').value.trim();
       const memberIdsNew = [...form.querySelectorAll('#fMembers input:checked')].map(i => i.value);
       const slots = collectSlots(form);
       if (!name || !(price >= 0)) return;
@@ -354,11 +358,11 @@
       let groupId = group?.id;
 
       if (group) {
-        const { error } = await sb.from('students').update({ name, price_per_lesson: price }).eq('id', group.id);
+        const { error } = await sb.from('students').update({ name, price_per_lesson: price, meeting_link }).eq('id', group.id);
         if (error) return toast('Не вдалося зберегти', true);
         await sb.from('group_members').delete().eq('group_id', group.id);
       } else {
-        const { data, error } = await sb.from('students').insert({ name, price_per_lesson: price, is_group: true, user_id: userId }).select().single();
+        const { data, error } = await sb.from('students').insert({ name, price_per_lesson: price, meeting_link, is_group: true, user_id: userId }).select().single();
         if (error) return toast('Не вдалося створити групу', true);
         groupId = data.id;
       }
@@ -451,6 +455,14 @@
     const s = currentStudents.find(x => x.id === id);
     $('#studentName').textContent = s.name;
     $('#balPriceLabel').textContent = s.is_group ? 'Ціна заняття' : 'Ціна уроку';
+
+    const meetingBtn = $('#meetingLinkBtn');
+    if (s.meeting_link) {
+      meetingBtn.href = s.meeting_link;
+      meetingBtn.hidden = false;
+    } else {
+      meetingBtn.hidden = true;
+    }
 
     if (s.is_group) {
       $('#studentPhone').textContent = '';
