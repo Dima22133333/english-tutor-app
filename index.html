@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Мои ученики — учёт уроков и оплат</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ====== ЭКРАН ВХОДА ====== -->
+<div class="auth-screen" id="authScreen">
+  <div class="auth-card">
+    <div class="auth-logo">📚</div>
+    <h1>Мои ученики</h1>
+    <p class="auth-sub">Учёт уроков и оплат</p>
+
+    <form id="loginForm" class="auth-form">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="authEmail" required autocomplete="email" placeholder="you@example.com">
+      </div>
+      <div class="field">
+        <label>Пароль</label>
+        <input type="password" id="authPassword" required autocomplete="current-password" placeholder="••••••••" minlength="6">
+      </div>
+      <p class="auth-error" id="authError"></p>
+      <button type="submit" class="btn btn-primary btn-block" id="loginBtn">Войти</button>
+      <button type="button" class="btn btn-ghost btn-block" id="signupBtn">Создать аккаунт (первый раз)</button>
+    </form>
+
+    <p class="auth-hint">Данные видит только тот, кто вошёл под своим email — надёжно защищено.</p>
+  </div>
+</div>
+
+<!-- ====== ОСНОВНОЕ ПРИЛОЖЕНИЕ ====== -->
+<div class="app" id="app" hidden>
+
+  <header class="app-header">
+    <div class="app-header__brand">📚 <span>Мои ученики</span></div>
+    <button class="btn btn-ghost btn-sm" id="logoutBtn">Выйти</button>
+  </header>
+
+  <!-- ---- Список учеников ---- -->
+  <main class="view" id="listView">
+    <div class="view-head">
+      <h2>Ученики</h2>
+      <button class="btn btn-primary btn-sm" id="addStudentBtn">+ Добавить ученика</button>
+    </div>
+
+    <div class="totals-row" id="totalsRow"></div>
+
+    <div class="students-grid" id="studentsGrid"></div>
+    <p class="empty-state" id="emptyState" hidden>Пока нет ни одного ученика. Добавь первого кнопкой выше.</p>
+  </main>
+
+  <!-- ---- Карточка ученика ---- -->
+  <main class="view" id="studentView" hidden>
+    <button class="back-btn" id="backBtn">← Все ученики</button>
+
+    <div class="student-head">
+      <div>
+        <h2 id="studentName">—</h2>
+        <span id="studentPhone" class="muted"></span>
+      </div>
+      <div class="student-head__actions">
+        <button class="btn btn-ghost btn-sm" id="editStudentBtn">Изменить</button>
+        <button class="btn btn-ghost btn-sm btn-danger" id="deleteStudentBtn">Удалить</button>
+      </div>
+    </div>
+
+    <div class="balance-card" id="balanceCard">
+      <div class="balance-item">
+        <span class="balance-item__label">Проведено уроков</span>
+        <span class="balance-item__value" id="balLessons">0</span>
+      </div>
+      <div class="balance-item">
+        <span class="balance-item__label">Цена урока</span>
+        <span class="balance-item__value" id="balPrice">0 ₴</span>
+      </div>
+      <div class="balance-item">
+        <span class="balance-item__label">Оплачено</span>
+        <span class="balance-item__value" id="balPaid">0 ₴</span>
+      </div>
+      <div class="balance-item balance-item--big">
+        <span class="balance-item__label">Баланс</span>
+        <span class="balance-item__value" id="balDue">0 ₴</span>
+      </div>
+    </div>
+
+    <div class="cols">
+      <section class="col-card">
+        <div class="col-card__head">
+          <h3>Уроки</h3>
+          <button class="btn btn-primary btn-sm" id="addLessonBtn">+ Урок</button>
+        </div>
+        <ul class="list" id="lessonsList"></ul>
+        <p class="empty-state-sm" id="lessonsEmpty" hidden>Уроков пока нет</p>
+      </section>
+
+      <section class="col-card">
+        <div class="col-card__head">
+          <h3>Оплаты</h3>
+          <button class="btn btn-primary btn-sm" id="addPaymentBtn">+ Оплата</button>
+        </div>
+        <ul class="list" id="paymentsList"></ul>
+        <p class="empty-state-sm" id="paymentsEmpty" hidden>Оплат пока нет</p>
+      </section>
+    </div>
+  </main>
+
+</div>
+
+<!-- ====== МОДАЛКИ ====== -->
+<div class="modal" id="modal">
+  <div class="modal__backdrop" id="modalBackdrop"></div>
+  <div class="modal__card">
+    <button class="modal__close" id="modalClose">×</button>
+    <h3 id="modalTitle">Заголовок</h3>
+    <form id="modalForm"></form>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
