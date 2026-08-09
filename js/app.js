@@ -252,9 +252,8 @@
 
     visible.forEach(s => {
       const card = el('div', 'student-card');
-      const ranOut = s.owed === 0 && s.paid > 0;
-      const balCls = s.owed > 0 ? 'due' : (ranOut ? 'watch' : 'ok');
-      const balText = s.owed > 0 ? `Борг ${fmtMoney(s.owed)}` : (s.owed < 0 ? `Переплата ${fmtMoney(-s.owed)}` : (ranOut ? 'Не оплачено' : 'Оплачено'));
+      const balCls = s.owed > 0 ? 'due' : (s.owed < 0 ? 'ok' : 'watch');
+      const balText = s.owed > 0 ? `Борг ${fmtMoney(s.owed)}` : (s.owed < 0 ? `Переплата ${fmtMoney(-s.owed)}` : 'Не оплачено');
       const subLabel = s.is_group ? memberNamesFor(s.id) || 'Без учасників' : (s.phone || 'без телефону');
       card.innerHTML = `
         <div class="student-card__name">${escapeHtml(s.name)}${s.is_group ? '<span class="group-badge">Група</span>' : ''}</div>
@@ -688,6 +687,54 @@
   $('#schedPrev').addEventListener('click', () => { scheduleDate.setDate(scheduleDate.getDate() - 1); renderSchedule(); });
   $('#schedNext').addEventListener('click', () => { scheduleDate.setDate(scheduleDate.getDate() + 1); renderSchedule(); });
   $('#schedToday').addEventListener('click', () => { scheduleDate = new Date(); renderSchedule(); });
+
+  $('#addOneTimeLessonBtn').addEventListener('click', () => {
+    if (!currentStudents.length) return toast('Спершу додай учня', true);
+    const studentOptions = currentStudents.map(s => `<option value="${s.id}">${escapeHtml(s.name)}${s.is_group ? ' (група)' : ''}</option>`).join('');
+    openModal('Разовий урок', `
+      <div class="field"><label>Учень / група</label><select id="fStudent">${studentOptions}</select></div>
+      <div class="field-row">
+        <div class="field"><label>Дата</label><input type="date" id="fDate" required value="${toISODate(scheduleDate)}"></div>
+        <div class="field"><label>Час (необов'язково)</label><input type="time" id="fTime"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Тривалість</label>
+          <select id="fDuration">${DURATIONS.map(d => `<option value="${d}" ${d === 60 ? 'selected' : ''}>${d} хв</option>`).join('')}</select>
+        </div>
+        <div class="field"><label>Статус</label>
+          <select id="fStatus">
+            <option value="planned">Заплановано</option>
+            <option value="done">Проведено</option>
+            <option value="rescheduled">Перенесено</option>
+            <option value="cancelled">Скасовано</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Нотатка (необов'язково)</label><textarea id="fNote" rows="2" placeholder="Наприклад: перенесли з понеділка"></textarea></div>
+      <button type="submit" class="btn btn-primary btn-block">Додати</button>
+    `, async (form) => {
+      const student_id = form.querySelector('#fStudent').value;
+      const lesson_date = form.querySelector('#fDate').value;
+      const lesson_time = form.querySelector('#fTime').value || null;
+      const duration_minutes = Number(form.querySelector('#fDuration').value);
+      const status = form.querySelector('#fStatus').value;
+      const note = form.querySelector('#fNote').value.trim();
+      const { error } = await sb.from('lessons').insert({
+        student_id, lesson_date, lesson_time, duration_minutes, status, note,
+        user_id: (await sb.auth.getUser()).data.user.id
+      });
+      if (error) return toast('Не вдалося додати урок', true);
+      closeModal();
+      toast('Урок додано');
+      await loadStudents();
+      renderSchedule();
+    });
+    const dateInput = $('#modalForm #fDate');
+    const statusSelect = $('#modalForm #fStatus');
+    const updateDefaultStatus = () => { statusSelect.value = dateInput.value > todayISO() ? 'planned' : 'done'; };
+    updateDefaultStatus();
+    dateInput.addEventListener('change', updateDefaultStatus);
+  });
 
   $('#scheduleList').addEventListener('change', async (e) => {
     const select = e.target;
