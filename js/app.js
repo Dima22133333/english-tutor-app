@@ -47,6 +47,7 @@
   const fmtDateLong = (d) => d.toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', weekday: 'long' });
   const toISODate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const todayISO = () => toISODate(new Date());
+  const isBillable = (status) => status === 'done' || status === 'cancelled_paid';
 
   const DURATIONS = [30, 40, 45, 50, 55, 60, 80, 90];
   const WEEKDAYS = [
@@ -209,7 +210,7 @@
     window.__allSlots = slotsRes.data || [];
 
     currentStudents = students.map(s => {
-      const doneCount = lessons.filter(l => l.student_id === s.id && l.status === 'done').length;
+      const doneCount = lessons.filter(l => l.student_id === s.id && isBillable(l.status)).length;
       const paid = payments.filter(p => p.student_id === s.id).reduce((sum, p) => sum + Number(p.amount), 0);
       const owed = doneCount * Number(s.price_per_lesson) - paid;
       return { ...s, doneCount, paid, owed };
@@ -229,7 +230,7 @@
 
     const monthPrefix = todayISO().slice(0, 7);
     const monthEarnings = currentStudents.reduce((sum, s) => {
-      const doneThisMonth = (lessons || []).filter(l => l.student_id === s.id && l.status === 'done' && l.lesson_date.startsWith(monthPrefix)).length;
+      const doneThisMonth = (lessons || []).filter(l => l.student_id === s.id && isBillable(l.status) && l.lesson_date.startsWith(monthPrefix)).length;
       return sum + doneThisMonth * Number(s.price_per_lesson);
     }, 0);
 
@@ -399,18 +400,18 @@
     const monthPrefix = todayISO().slice(0, 7);
     const monthLabel = new Date().toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' });
 
-    const monthLessons = currentLessons.filter(l => l.lesson_date.startsWith(monthPrefix) && l.status === 'done');
+    const monthLessons = currentLessons.filter(l => l.lesson_date.startsWith(monthPrefix) && isBillable(l.status));
     const monthPayments = currentPayments.filter(p => p.payment_date.startsWith(monthPrefix));
     const sumLessons = monthLessons.length * Number(s.price_per_lesson);
     const sumPaid = monthPayments.reduce((sum, p) => sum + Number(p.amount), 0);
 
-    const doneCountTotal = currentLessons.filter(l => l.status === 'done').length;
+    const doneCountTotal = currentLessons.filter(l => isBillable(l.status)).length;
     const paidTotal = currentPayments.reduce((sum, p) => sum + Number(p.amount), 0);
     const owedTotal = doneCountTotal * Number(s.price_per_lesson) - paidTotal;
 
     const lessonsListText = monthLessons.length
       ? monthLessons.slice().sort((a, b) => a.lesson_date.localeCompare(b.lesson_date))
-          .map(l => `— ${fmtDate(l.lesson_date)}${l.lesson_time ? ' о ' + l.lesson_time.slice(0, 5) : ''}${l.duration_minutes ? ` (${l.duration_minutes} хв)` : ''}`).join('\n')
+          .map(l => `— ${fmtDate(l.lesson_date)}${l.lesson_time ? ' о ' + l.lesson_time.slice(0, 5) : ''}${l.duration_minutes ? ` (${l.duration_minutes} хв)` : ''}${l.status === 'cancelled_paid' ? ' (скасовано, з оплатою)' : ''}`).join('\n')
       : 'уроків не було';
 
     const balanceLine = owedTotal > 0 ? `Борг: ${fmtMoney(owedTotal)}` : (owedTotal < 0 ? `Переплата: ${fmtMoney(-owedTotal)}` : 'Оплачено повністю');
@@ -491,7 +492,7 @@
   }
 
   function renderStudentDetail(s) {
-    const doneCount = currentLessons.filter(l => l.status === 'done').length;
+    const doneCount = currentLessons.filter(l => isBillable(l.status)).length;
     const paid = currentPayments.reduce((sum, p) => sum + Number(p.amount), 0);
     const owed = doneCount * Number(s.price_per_lesson) - paid;
     const paidLessons = s.price_per_lesson > 0 ? Math.floor(paid / Number(s.price_per_lesson)) : 0;
@@ -523,7 +524,8 @@
               <option value="planned" ${l.status === 'planned' ? 'selected' : ''}>Заплановано</option>
               <option value="done" ${l.status === 'done' ? 'selected' : ''}>Проведено</option>
               <option value="rescheduled" ${l.status === 'rescheduled' ? 'selected' : ''}>Перенесено</option>
-              <option value="cancelled" ${l.status === 'cancelled' ? 'selected' : ''}>Скасовано</option>
+              <option value="cancelled" ${l.status === 'cancelled' ? 'selected' : ''}>Скасовано (без оплати)</option>
+              <option value="cancelled_paid" ${l.status === 'cancelled_paid' ? 'selected' : ''}>Скасовано (з оплатою)</option>
             </select>
             <button class="row-note" data-note-lesson="${l.id}" title="Нотатка">📝</button>
             <button class="row-del" data-del-lesson="${l.id}" title="Видалити">✕</button>
@@ -631,7 +633,8 @@
             <option value="planned">Заплановано</option>
             <option value="done">Проведено</option>
             <option value="rescheduled">Перенесено</option>
-            <option value="cancelled">Скасовано</option>
+            <option value="cancelled">Скасовано (без оплати)</option>
+            <option value="cancelled_paid">Скасовано (з оплатою)</option>
           </select>
         </div>
       </div>
@@ -706,7 +709,8 @@
             <option value="planned">Заплановано</option>
             <option value="done">Проведено</option>
             <option value="rescheduled">Перенесено</option>
-            <option value="cancelled">Скасовано</option>
+            <option value="cancelled">Скасовано (без оплати)</option>
+            <option value="cancelled_paid">Скасовано (з оплатою)</option>
           </select>
         </div>
       </div>
@@ -802,7 +806,8 @@
           <option value="planned" ${entry.status === 'planned' ? 'selected' : ''}>Заплановано</option>
           <option value="done" ${entry.status === 'done' ? 'selected' : ''}>Проведено</option>
           <option value="rescheduled" ${entry.status === 'rescheduled' ? 'selected' : ''}>Перенесено</option>
-          <option value="cancelled" ${entry.status === 'cancelled' ? 'selected' : ''}>Скасовано</option>
+          <option value="cancelled" ${entry.status === 'cancelled' ? 'selected' : ''}>Скасовано (без оплати)</option>
+          <option value="cancelled_paid" ${entry.status === 'cancelled_paid' ? 'selected' : ''}>Скасовано (з оплатою)</option>
         </select>`;
       row.innerHTML = `
         <div class="list-row__main">
@@ -857,7 +862,7 @@
     }
     const earnings = months.map(m => {
       const sum = currentStudents.reduce((total, s) => {
-        const count = lessons.filter(l => l.student_id === s.id && l.status === 'done' && l.lesson_date.startsWith(m.prefix)).length;
+        const count = lessons.filter(l => l.student_id === s.id && isBillable(l.status) && l.lesson_date.startsWith(m.prefix)).length;
         return total + count * Number(s.price_per_lesson);
       }, 0);
       return { ...m, sum };
@@ -874,7 +879,7 @@
     const cancelRows = currentStudents.map(s => {
       const sLessons = lessons.filter(l => l.student_id === s.id);
       const total = sLessons.length;
-      const bad = sLessons.filter(l => l.status === 'cancelled' || l.status === 'rescheduled').length;
+      const bad = sLessons.filter(l => l.status === 'cancelled' || l.status === 'cancelled_paid' || l.status === 'rescheduled').length;
       return { name: s.name, pct: total ? Math.round((bad / total) * 100) : 0, total };
     }).filter(r => r.total > 0).sort((a, b) => b.pct - a.pct);
 

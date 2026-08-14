@@ -197,6 +197,7 @@ ul{ list-style:none; margin:0; padding:0; }
 .status-select.done{ background-color:var(--success-soft); color:var(--success); }
 .status-select.rescheduled{ background-color:var(--warn-soft); color:var(--warn); }
 .status-select.cancelled{ background-color:var(--danger-soft); color:var(--danger); }
+.status-select.cancelled_paid{ background-color:var(--group-soft); color:var(--group); }
 .amount-tag{ font-weight:800; color:var(--success); font-size:14.5px; }
 .row-del{ background:var(--surface); border:1px solid var(--border); color:var(--text-muted); font-size:14px; width:28px; height:28px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; }
 .row-del:hover{ color:var(--danger); background:var(--danger-soft); }
